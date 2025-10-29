@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.portfoliospring1.contoller.response.BaseResponse;
 import org.example.portfoliospring1.domain.dto.UserDto;
 import org.example.portfoliospring1.domain.dto.request.AddUserDto;
+import org.example.portfoliospring1.domain.dto.request.LoginByEmailDto;
 import org.example.portfoliospring1.service.UserService;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,8 +34,8 @@ public class UserController {
         return new BaseResponse<>(userService.isValidNickname(nickname));
     }
 
-    @PostMapping("/login")
-    public BaseResponse<String> login() {
-        return new BaseResponse<>(userService.login("",""));
+    @PostMapping("/login-by-email")
+    public BaseResponse<String> loginByEmail(@RequestBody LoginByEmailDto loginByEmailDto) {
+        return new BaseResponse<>(userService.login(loginByEmailDto));
     }
 }
