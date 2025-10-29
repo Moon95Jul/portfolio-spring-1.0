@@ -33,4 +33,8 @@ public class UserController {
         return new BaseResponse<>(userService.isValidNickname(nickname));
     }
 
+    @PostMapping("/login")
+    public BaseResponse<String> login() {
+        return new BaseResponse<>(userService.login("",""));
+    }
 }

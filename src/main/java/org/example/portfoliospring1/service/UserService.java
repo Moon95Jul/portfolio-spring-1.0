@@ -7,6 +7,7 @@ import org.example.portfoliospring1.domain.dto.UserDto;
 import org.example.portfoliospring1.domain.dto.request.AddUserDto;
 import org.example.portfoliospring1.domain.entity.User;
 import org.example.portfoliospring1.repository.UserRepository;
+import org.example.portfoliospring1.util.JwtUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final JwtUtil jwtUtil;
 
     public UserDto getUser(String nickname) {
         User user = userRepository.findByNickname(nickname);
@@ -73,6 +75,11 @@ public class UserService {
 
         // 4. 위에 해당 안 하면 true
         return true;
+    }
+
+    public String login(String nickname, String password) {
+        // repository user ㄱㅏ져오기...
+        return jwtUtil.generateToken(1L, "nickname hi", "email hi");
     }
 
 }
