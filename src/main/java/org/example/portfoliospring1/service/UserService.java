@@ -1,7 +1,7 @@
 package org.example.portfoliospring1.service;
 
 import lombok.RequiredArgsConstructor;
-import org.example.portfoliospring1.contoller.response.BaseExeption;
+import org.example.portfoliospring1.contoller.response.BaseException;
 import org.example.portfoliospring1.contoller.response.BaseResponseStatusEnum;
 import org.example.portfoliospring1.domain.dto.UserDto;
 import org.example.portfoliospring1.domain.dto.request.AddUserDto;
@@ -26,28 +26,24 @@ public class UserService {
         if (user == null) {
             return null;
         }
+
         return new UserDto(user);
     }
 
-
-    public List<UserDto> getUser() {
+    public List<UserDto> getUsers() {
         List<User> users = userRepository.findAll();
 
-//      return users.stream().map(user -> new UserDto(user)).collect(Collectors.toList());
-        return users.stream().map(UserDto::new).collect(Collectors.toList());
+        return users.stream().map(user -> new UserDto(user)).collect(Collectors.toList());
+//        return users.stream().map(UserDto::new).collect(Collectors.toList());
     }
 
-
     public Long addUser(AddUserDto addUserDto) {
-        // 회원가입
-        // 1. 중복된 닉네임이면 가입 못하게
         if (!userRepository.findAllByNickname(addUserDto.getNickname()).isEmpty()) {
-            throw new BaseExeption(BaseResponseStatusEnum.DUPLICATED_NICKNAME );
+            throw new BaseException(BaseResponseStatusEnum.DUPLICATED_NICKNAME);
         }
-        // 2. 중복된 이메일이면 가입 못하게
-        // if (userRepository.findAllByEmail(addUserDto.getEmail()).size() != 0)
+
         if (!userRepository.findAllByEmail(addUserDto.getEmail()).isEmpty()) {
-            throw new BaseExeption(BaseResponseStatusEnum.DUPLICATED_EMAIL );
+            throw new BaseException(BaseResponseStatusEnum.DUPLICATED_EMAIL);
         }
 
         User user = new User();
@@ -58,4 +54,25 @@ public class UserService {
         userRepository.save(user);
         return user.getId();
     }
+
+    public Boolean isValidNickname(String nickname) {
+        // 1. 문자열 길이 3글자 이상 체크
+        if (nickname == null || nickname.length() < 3) {
+            throw new BaseException(BaseResponseStatusEnum.INVALID_NICKNAME_LENGTH);
+        }
+
+        // 2. 사용할 수 없는 문자 체크 '바보', '멍청이' 단어 들어가면 불가
+        if (nickname.contains("바보") || nickname.contains("멍청이")) {
+            throw new BaseException(BaseResponseStatusEnum.INVALID_NICKNAME_WORD);
+        }
+
+        // 3. 중복되었는지 확인
+        if (!userRepository.findAllByNickname(nickname).isEmpty()) {
+            throw new BaseException(BaseResponseStatusEnum.DUPLICATED_NICKNAME);
+        }
+
+        // 4. 위에 해당 안 하면 true
+        return true;
+    }
+
 }
