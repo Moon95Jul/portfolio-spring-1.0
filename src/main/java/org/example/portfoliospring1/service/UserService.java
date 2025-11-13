@@ -4,11 +4,15 @@ import lombok.RequiredArgsConstructor;
 import org.example.portfoliospring1.contoller.response.BaseException;
 import org.example.portfoliospring1.contoller.response.BaseResponseStatusEnum;
 import org.example.portfoliospring1.domain.dto.UserDto;
+import org.example.portfoliospring1.domain.dto.infra.KauthTokenDto;
 import org.example.portfoliospring1.domain.dto.request.AddUserDto;
 import org.example.portfoliospring1.domain.dto.request.LoginByEmailDto;
+import org.example.portfoliospring1.domain.dto.request.LoginByKakaoDto;
 import org.example.portfoliospring1.domain.entity.User;
+import org.example.portfoliospring1.infra.feign.KauthFeignClient;
 import org.example.portfoliospring1.repository.UserRepository;
 import org.example.portfoliospring1.util.JwtUtil;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,8 +25,15 @@ import java.util.stream.Collectors;
 @Transactional
 public class UserService {
 
+    @Value("${kakao.api}")
+    private String KAKAKO_API_KEY;
+    @Value("${kakao.secret}")
+    private String KAKAKO_SECRET_KEY;
+
+
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
+    private final KauthFeignClient kauthFeignClient;
 
     public UserDto getUser(String nickname) {
         User user = userRepository.findByNickname(nickname);
@@ -89,6 +100,28 @@ public class UserService {
         }
 
 
+    }
+
+    public String loginByKakao(LoginByKakaoDto loginByKakaoDto) {
+        System.out.println(loginByKakaoDto.getCode() + " @code");
+
+        try {
+            KauthTokenDto kauthTokenDto = kauthFeignClient.getKakaoToken(
+                    "authorization_code",
+                    KAKAKO_API_KEY,
+                    "http://localhost:3000/login/kakao",
+                    loginByKakaoDto.getCode(),
+                    KAKAKO_SECRET_KEY
+            );
+
+            System.out.println("success " + kauthTokenDto);
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Feign call failed: " + e.getMessage());
+        }
+
+
+        return "";
     }
 
 }
