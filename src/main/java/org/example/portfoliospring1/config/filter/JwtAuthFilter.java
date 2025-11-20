@@ -8,6 +8,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.example.portfoliospring1.config.auth.JwtUserPrincipal;
 import org.example.portfoliospring1.util.JwtUtil;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -37,14 +38,23 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             try {
                 Jws<Claims> jws = jwtUtil.parseToken(accessToken);
                 Claims body= jws.getBody();
-//                String nickname = body.get("nickname").toString();
 
-                body.getSubject();
+                Long userId = (body.getSubject() == null || body.getSubject().equals("null")) ? null : Long.parseLong(body.getSubject());
+
+                JwtUserPrincipal principal = new JwtUserPrincipal(
+                        userId,
+                        body.get("nickname", String.class),
+                        body.get("email", String.class),
+                        body.get("providerId", String.class)
+                );
+
+                System.out.println(userId + " / " + body.get("providerId", String.class));
 
                 Authentication authentication = new UsernamePasswordAuthenticationToken(
-                        body.getSubject(),
+                        principal,
                         null,
-                        Collections.emptyList()); //List.of(new SimpleGrantedAuthority("ROLE_USER")));
+                        Collections.emptyList()
+                );
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
 

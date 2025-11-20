@@ -1,15 +1,18 @@
 package org.example.portfoliospring1.contoller;
 
 import lombok.RequiredArgsConstructor;
+import org.example.portfoliospring1.config.auth.JwtUserPrincipal;
 import org.example.portfoliospring1.contoller.response.BaseResponse;
 import org.example.portfoliospring1.domain.dto.UserDto;
 import org.example.portfoliospring1.domain.dto.request.AddUserDto;
 import org.example.portfoliospring1.domain.dto.request.LoginByEmailDto;
 import org.example.portfoliospring1.domain.dto.request.LoginByKakaoDto;
 import org.example.portfoliospring1.service.UserService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
 
 @RestController
 @RequiredArgsConstructor
@@ -26,11 +29,14 @@ public class UserController {
     }
 
     @PostMapping("/add-user")
-    public BaseResponse<Long> addUser(@RequestBody AddUserDto addUserDto) {
-        return new BaseResponse<>(userService.addUser(addUserDto));
+    public BaseResponse<String> addUser(@AuthenticationPrincipal JwtUserPrincipal principal,
+                                      @RequestBody AddUserDto addUserDto) {
+
+
+        return new BaseResponse<>(userService.addUser(addUserDto, principal.getProvider()));
     }
 
-    @GetMapping("/is-valid-nickname")
+    @GetMapping("/public/is-valid-nickname")
     public BaseResponse<Boolean> isValidNickname(@RequestParam String nickname) {
         return new BaseResponse<>(userService.isValidNickname(nickname));
     }
@@ -45,5 +51,18 @@ public class UserController {
         System.out.println("loginByKakaoDto = " + loginByKakaoDto);
         return new BaseResponse<>(userService.loginByKakao(loginByKakaoDto));
     }
+
+    @PostMapping("/me")
+    public BaseResponse<UserDto> me(@AuthenticationPrincipal JwtUserPrincipal principal) {
+        System.out.println("principal.getUserId() : = " + principal.getUserId());
+
+        if (principal.getUserId() == null) {
+            return new BaseResponse<>(new UserDto());
+        }
+
+        return new BaseResponse<>(userService.me(principal.getUserId()));
+    }
+
+    // 스프링 시큐리티
 
 }

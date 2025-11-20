@@ -4,11 +4,13 @@ import lombok.RequiredArgsConstructor;
 import org.example.portfoliospring1.contoller.response.BaseException;
 import org.example.portfoliospring1.contoller.response.BaseResponseStatusEnum;
 import org.example.portfoliospring1.domain.dto.UserDto;
+import org.example.portfoliospring1.domain.dto.infra.KapiUserMeDto;
 import org.example.portfoliospring1.domain.dto.infra.KauthTokenDto;
 import org.example.portfoliospring1.domain.dto.request.AddUserDto;
 import org.example.portfoliospring1.domain.dto.request.LoginByEmailDto;
 import org.example.portfoliospring1.domain.dto.request.LoginByKakaoDto;
 import org.example.portfoliospring1.domain.entity.User;
+import org.example.portfoliospring1.infra.feign.KapiFeignClient;
 import org.example.portfoliospring1.infra.feign.KauthFeignClient;
 import org.example.portfoliospring1.repository.UserRepository;
 import org.example.portfoliospring1.util.JwtUtil;
@@ -16,8 +18,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,6 +35,8 @@ public class UserService {
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
     private final KauthFeignClient kauthFeignClient;
+    private final KapiFeignClient kapiFeignClient;
+
 
     public UserDto getUser(String nickname) {
         User user = userRepository.findByNickname(nickname);
@@ -51,7 +54,7 @@ public class UserService {
 //        return users.stream().map(UserDto::new).collect(Collectors.toList());
     }
 
-    public Long addUser(AddUserDto addUserDto) {
+    public String addUser(AddUserDto addUserDto, String providerId) {
         if (!userRepository.findAllByNickname(addUserDto.getNickname()).isEmpty()) {
             throw new BaseException(BaseResponseStatusEnum.DUPLICATED_NICKNAME);
         }
@@ -64,9 +67,11 @@ public class UserService {
         user.setNickname(addUserDto.getNickname());
         user.setEmail(addUserDto.getEmail());
         user.setPassword(addUserDto.getPassword());
+        System.out.println("user.setProviderId(providerId);" + providerId);
+        user.setProviderId(providerId);
 
         userRepository.save(user);
-        return user.getId();
+        return jwtUtil.generateToken(user.getId(), user.getEmail(), user.getEmail(), user.getProviderId());
     }
 
     public Boolean isValidNickname(String nickname) {
@@ -93,7 +98,7 @@ public class UserService {
         try {
             User user = userRepository.findByEmailAndPassword(loginByEmailDto.getEmail(), loginByEmailDto.getPassword())
                     .orElseThrow();
-            return jwtUtil.generateToken(user.getId(), user.getNickname(), user.getEmail());
+            return jwtUtil.generateToken(user.getId(), user.getNickname(), user.getEmail(), user.getProviderId());
 
         } catch (Exception e) {
             throw  new BaseException(BaseResponseStatusEnum.FAILED_TO_LOGIN);
@@ -114,14 +119,44 @@ public class UserService {
                     KAKAKO_SECRET_KEY
             );
 
-            System.out.println("success " + kauthTokenDto);
+
+
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Authorization", "Bearer " + kauthTokenDto.access_token());
+
+            KapiUserMeDto kapiUserMeDto = kapiFeignClient.userMe(headers);
+
+            // 카카오 ID 까지는 찾음
+
+            // 카카오 ID로 우리 DB에 유저가 있는지 확인
+            Optional<User> userOptional = userRepository.findByProviderIdAndDeleted(kapiUserMeDto.id(), false);
+
+            if(userOptional.isPresent()) {
+                User user = userOptional.get();
+                // 있으면 로그인 시킴
+                return jwtUtil.generateToken(user.getId(), user.getNickname(), user.getEmail(), user.getProviderId());
+            }
+
+            // 2. 없으면 회원가입
+            // 아래 두 정보가 클라이언트에게 필요함. 우리는 두 저옵를 jwt 토큰으로 클라이언트에게 전달할거임.
+            // 회원가입이 필요하다 => 토큰의 userId가 null 이면 회원가입이 필요.
+            // provider id
+            return jwtUtil.generateToken(null,null,null, kapiUserMeDto.id());
+
         } catch (Exception e) {
             e.printStackTrace();
-            System.out.println("Feign call failed: " + e.getMessage());
+            throw  new BaseException(BaseResponseStatusEnum.FAILED_TO_LOGIN);
+        }
+    }
+
+    public UserDto me(Long userId) {
+        Optional<User> optionalUser = userRepository.findById(userId);
+
+        if (optionalUser.isPresent()) {
+            return new UserDto(optionalUser.get());
         }
 
-
-        return "";
+        return null;
     }
 
 }
